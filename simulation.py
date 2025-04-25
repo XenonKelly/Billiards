@@ -206,7 +206,7 @@ def main(no_gui=False):
     particle_collisions = 0
     wall_collisions = 0
     collisions_by_particle = np.zeros(num_particles)
-    collided_number = np.zeros(num_particles)
+    collided_number = np.zeros(num_particles + 1)
 
     clock = pygame.time.Clock()
     running = True
