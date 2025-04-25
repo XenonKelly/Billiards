@@ -258,10 +258,15 @@ def main(no_gui=False):
         collision_count_label.set_text(f"Particle Collisions: {particle_collisions}")
         wall_collision_count_label.set_text(f"Wall Collisions: {wall_collisions}")
 
-        if(counter_heating > heating_iterations):
+        if counter_heating <= heating_iterations:
+            time_delta *= 5  # Увеличиваем шаг времени в 5 раз, чтобы быстрей пройти прогрев
+
+        if counter_heating > heating_iterations:
             collided_number[np.count_nonzero(collisions_by_particle)] += 1
-        # print(np.count_nonzero(collisions_by_particle), sep=",")
-        print(collided_number, counter_heating, sep=",")
+    # Выводим данные только после прогрева
+            print(collided_number, counter_heating, sep=",")
+        else:
+            pass  # Пропускаем вывод во время прогрева
 
         manager.update(time_delta)
         manager.draw_ui(screen)
