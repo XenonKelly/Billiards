@@ -2,6 +2,7 @@ import numpy as np
 import csv
 from numba import njit
 import math
+from distribution import plot_collision_distribution
 
 @njit
 def update_positions(x, y, vx, vy, r, width, height, dt):
@@ -100,16 +101,16 @@ def run_simulation_numba(x, y, vx, vy, r, width, height, dt, total_steps, output
         #     stats[stats_index, 4] = ratio
         #     stats_index += 1
     print(collided_number)
-    return stats
+    return collided_number, stats
 
 print("Running...")
 
 width = 800
 height = 600
-num_particles = 10
+num_particles = 20
 radius = 20
 mass = 1.0   
-speed_range = [50, 100]
+speed_range = [1, 100]
 dt = 0.01
 total_steps = 100000
 output_interval = 1000
@@ -123,8 +124,12 @@ angles = np.random.uniform(0, 2*np.pi, n)
 vx_arr = speeds * np.cos(angles)
 vy_arr = speeds * np.sin(angles)
 
-stats = run_simulation_numba(x_arr, y_arr, vx_arr, vy_arr, r_arr,
+collided_number, stats = run_simulation_numba(x_arr, y_arr, vx_arr, vy_arr, r_arr,
                                 width, height, dt, total_steps, output_interval)
+
+plot_collision_distribution(collided_number)
+
+
 
 # output_file = "simulation_stats.csv"
 # with open(output_file, "w", newline="") as csvfile:

@@ -48,27 +48,24 @@ def collide_particles(p1, p2):
     dist = np.sqrt(dx**2 + dy**2)
     min_dist = p1.radius + p2.radius
 
-    if dist < min_dist:  # Столкновение
+    if dist < min_dist: 
         if dist == 0:
-            return False  # Не обрабатываем столкновение, если частицы полностью совпали
+            return False  
 
-        nx, ny = dx / dist, dy / dist  # Единичный вектор нормали
+        nx, ny = dx / dist, dy / dist  
 
-        tx, ty = -ny, nx  # Тангенциальный вектор
-
-        v1n = p1.vx * nx + p1.vy * ny  # Проекция скоростей на нормаль
+        tx, ty = -ny, nx  
+        v1n = p1.vx * nx + p1.vy * ny 
         v2n = p2.vx * nx + p2.vy * ny
 
-        v1t = p1.vx * tx + p1.vy * ty  # Проекция на тангенс
+        v1t = p1.vx * tx + p1.vy * ty  
         v2t = p2.vx * tx + p2.vy * ty
 
-        # Обмен импульсом по нормальному направлению (упругое столкновение)
         p1.vx = v2n * nx + v1t * tx
         p1.vy = v2n * ny + v1t * ty
         p2.vx = v1n * nx + v2t * tx
         p2.vy = v1n * ny + v2t * ty
 
-        # Раздвижение частиц, чтобы не залипали
         overlap = min_dist - dist
         p1.x -= overlap * nx / 2
         p1.y -= overlap * ny / 2
@@ -85,7 +82,6 @@ def create_particles(num_particles, radius, mass, speed_range, width, height):
         y = random.uniform(radius, height - radius)
         new_particle = Particle(x, y, radius, mass, speed_range, id=i)
 
-        # Check for overlap with existing particles
         overlap = False
         for p in particles:
             dx = new_particle.x - p.x
@@ -104,7 +100,6 @@ def main(no_gui=False):
     heating_iterations = 2000
     counter_heating = 0
 
-    # Default parameters
     width = 800
     height = 600
     num_particles = 10
@@ -128,17 +123,14 @@ def main(no_gui=False):
             writer.writerow(["Time (s)", "Particle Collisions", "Wall Collisions", "Total Collisions", "Collision Ratio (%)"])
 
             for step in range(1, sim_time + 1):
-                # Обновляем частицы
                 for p in particles:
                     p.update(dt, width, height)
 
-                # Столкновения частиц
                 for i in range(len(particles)):
                     for j in range(i + 1, len(particles)):
                         if collide_particles(particles[i], particles[j]):
                             particle_collisions += 1
 
-                # Столкновения со стенками
                 for p in particles:
                     if (p.x - p.radius < 1 or p.x + p.radius > width - 1 or
                         p.y - p.radius < 1 or p.y + p.radius > height - 1):
@@ -231,7 +223,7 @@ def main(no_gui=False):
                             speed_range = [float(speed_range_min_entry.get_text()), float(speed_range_max_entry.get_text())]
                             aspect_ratio = float(aspect_ratio_entry.get_text())
 
-                            width = 800  # Or other base size
+                            width = 800  
                             height = int(width / aspect_ratio)
                             screen = pygame.display.set_mode((width, height))
 
@@ -250,7 +242,6 @@ def main(no_gui=False):
             p1.update(time_delta, width, height)
             p1.draw(screen)
 
-        # Collision detection
         for i in range(len(particles)):
             for j in range(i + 1, len(particles)):
                 if collide_particles(particles[i], particles[j]):
@@ -258,7 +249,6 @@ def main(no_gui=False):
                     collisions_by_particle[i] += 1
                     collisions_by_particle[j] += 1
 
-        #Count wall collisions (simplified - increments for any particle near a wall)
         for p in particles:
             if (p.x - p.radius < 1 or p.x + p.radius > width - 1 or
                 p.y - p.radius < 1 or p.y + p.radius > height - 1):
