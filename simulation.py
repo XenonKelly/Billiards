@@ -26,7 +26,6 @@ class Particle:
         self.x += self.vx * dt
         self.y += self.vy * dt
 
-        # Wall collisions
         if self.x - self.radius < 0:
             self.x = self.radius
             self.vx *= -1
