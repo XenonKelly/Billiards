@@ -26,7 +26,6 @@ class Particle:
         self.x += self.vx * dt
         self.y += self.vy * dt
 
-        # Wall collisions
         if self.x - self.radius < 0:
             self.x = self.radius
             self.vx *= -1
@@ -207,7 +206,7 @@ def main(no_gui=False):
     particle_collisions = 0
     wall_collisions = 0
     collisions_by_particle = np.zeros(num_particles)
-    collided_number = np.zeros(num_particles)
+    collided_number = np.zeros(num_particles + 1)
 
     clock = pygame.time.Clock()
     running = True
@@ -269,10 +268,15 @@ def main(no_gui=False):
         collision_count_label.set_text(f"Particle Collisions: {particle_collisions}")
         wall_collision_count_label.set_text(f"Wall Collisions: {wall_collisions}")
 
-        if(counter_heating > heating_iterations):
+        if counter_heating <= heating_iterations:
+            time_delta *= 5  # Увеличиваем шаг времени в 5 раз, чтобы быстрей пройти прогрев
+
+        if counter_heating > heating_iterations:
             collided_number[np.count_nonzero(collisions_by_particle)] += 1
-        # print(np.count_nonzero(collisions_by_particle), sep=",")
-        print(collided_number, counter_heating, sep=",")
+    # Выводим данные только после прогрева
+            print(collided_number, counter_heating, sep=",")
+        else:
+            pass  # Пропускаем вывод во время прогрева
 
         manager.update(time_delta)
         manager.draw_ui(screen)
