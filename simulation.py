@@ -9,6 +9,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--no-gui', action='store_true', help='Run simulation without GUI')
 args = parser.parse_args()
 
+PANEL_WIDTH = 250
+UI_MARGIN = 10
+
+BASE_SIM_HEIGHT = 600
+SIM_WIDTH = 800    # Ширина области симуляции
+SIM_HEIGHT = 600
+ASPECT_RATIO = 1.33
+
 
 class Particle:
     def __init__(self, x, y, radius, mass, speed_range, id):
@@ -22,21 +30,25 @@ class Particle:
         self.vy = self.speed * np.sin(self.angle)
         self.id = id
 
-    def update(self, dt, width, height):
+    def update(self, dt, sim_width, sim_height):
         self.x += self.vx * dt
         self.y += self.vy * dt
 
-        if self.x - self.radius < 0:
-            self.x = self.radius
+        if self.x - self.radius < PANEL_WIDTH:  # Левая граница
+            self.x = PANEL_WIDTH + self.radius
             self.vx *= -1
-        if self.x + self.radius > width:
-            self.x = width - self.radius
+            
+        if self.x + self.radius > PANEL_WIDTH + sim_width:  # Правая граница
+            self.x = PANEL_WIDTH + sim_width - self.radius
             self.vx *= -1
+
+            
         if self.y - self.radius < 0:
             self.y = self.radius
             self.vy *= -1
-        if self.y + self.radius > height:
-            self.y = height - self.radius
+            
+        if self.y + self.radius > sim_height:
+            self.y = sim_height - self.radius
             self.vy *= -1
 
     def draw(self, screen):
@@ -75,24 +87,26 @@ def collide_particles(p1, p2):
         return True
     return False
 
-def create_particles(num_particles, radius, mass, speed_range, width, height):
+def create_particles(num_particles, radius, mass, speed_range, sim_width, sim_height):
     particles = []
     for i in range(num_particles):
-        x = random.uniform(radius, width - radius)
-        y = random.uniform(radius, height - radius)
-        new_particle = Particle(x, y, radius, mass, speed_range, id=i)
-
+        # Генерация X с учётом панели (от PANEL_WIDTH до PANEL_WIDTH + sim_width)
+        x = random.uniform(PANEL_WIDTH + radius, PANEL_WIDTH + sim_width - radius)
+        y = random.uniform(radius, sim_height - radius)
+        
+        # Проверка перекрытия с другими частицами
         overlap = False
         for p in particles:
-            dx = new_particle.x - p.x
-            dy = new_particle.y - p.y
+            dx = x - p.x
+            dy = y - p.y
             dist = np.sqrt(dx**2 + dy**2)
-            if dist < new_particle.radius + p.radius:
+            if np.hypot(dx, dy) < radius + p.radius:
                 overlap = True
                 break
-
+                
         if not overlap:
-            particles.append(new_particle)
+            particles.append(Particle(x, y, radius, mass, speed_range, id=i))
+            
     return particles
 
 
@@ -100,18 +114,23 @@ def main(no_gui=False):
     heating_iterations = 2000
     counter_heating = 0
 
-    width = 800
-    height = 600
+    # В начале функции main()
+    
+    sim_height = BASE_SIM_HEIGHT
+    sim_width = int(sim_height * ASPECT_RATIO)
+    window_width = PANEL_WIDTH + sim_width
+    window_height = sim_height
+
     num_particles = 10
     radius = 10
     mass = 1
     speed_range = [300, 350]
-    aspect_ratio = 1.33
+    aspect_ratio = ASPECT_RATIO
 
     if no_gui:
         print("Running in headless (no-GUI) mode...")
 
-        particles = create_particles(num_particles, radius, mass, speed_range, width, height)
+        particles = create_particles(num_particles, radius, mass, speed_range, window_width, window_height)
         sim_time = 100000  # общее число шагов времени
         dt = 0.01  # шаг по времени
         particle_collisions = 0
@@ -124,7 +143,7 @@ def main(no_gui=False):
 
             for step in range(1, sim_time + 1):
                 for p in particles:
-                    p.update(dt, width, height)
+                    p.update(dt, window_width, window_height)
 
                 for i in range(len(particles)):
                     for j in range(i + 1, len(particles)):
@@ -132,8 +151,8 @@ def main(no_gui=False):
                             particle_collisions += 1
 
                 for p in particles:
-                    if (p.x - p.radius < 1 or p.x + p.radius > width - 1 or
-                        p.y - p.radius < 1 or p.y + p.radius > height - 1):
+                    if (p.x - p.radius < 1 or p.x + p.radius > window_width - 1 or
+                        p.y - p.radius < 1 or p.y + p.radius > window_height - 1):
                         wall_collisions += 1
 
                 if step % 100 == 0:
@@ -147,54 +166,110 @@ def main(no_gui=False):
 
     pygame.init()
 
-    screen = pygame.display.set_mode((width, height))
+    screen = pygame.display.set_mode((window_width, window_height), pygame.RESIZABLE)
     pygame.display.set_caption("Molecular Gas Simulation")
+    manager = pygame_gui.UIManager((window_width, window_height))
 
-    manager = pygame_gui.UIManager((width, height))
 
-    # UI elements
-    num_particles_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect((10, 10), (150, 20)),
-                                                    text="Number of Particles:", manager=manager)
-    num_particles_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((170, 10), (50, 20)),
-                                                              manager=manager)
+    current_y = 10
+
+    num_particles_label = pygame_gui.elements.UILabel(
+        relative_rect=pygame.Rect((-18, current_y), (200, 30)),
+        text="Number of Particles:",
+        manager=manager
+    )
+    current_y += 40
+
+    num_particles_entry = pygame_gui.elements.UITextEntryLine(
+        relative_rect=pygame.Rect((10, current_y), (100, 30)),
+        manager=manager
+    )
     num_particles_entry.set_text(str(num_particles))
+    current_y += 40
+    
+    radius_label = pygame_gui.elements.UILabel(
+        relative_rect=pygame.Rect((-45, current_y), (200, 30)),
+        text="Radius (px):",
+        manager=manager
+    )
+    current_y += 30
 
-    radius_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect((10, 40), (100, 20)),
-                                            text="Radius:", manager=manager)
-    radius_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((120, 40), (50, 20)),
-                                                      manager=manager)
+    radius_entry = pygame_gui.elements.UITextEntryLine(
+        relative_rect=pygame.Rect((10, current_y), (100, 30)),
+        manager=manager
+    )
     radius_entry.set_text(str(radius))
+    current_y += 40
 
-    mass_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect((10, 70), (100, 20)),
-                                          text="Mass:", manager=manager)
-    mass_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((120, 70), (50, 20)),
-                                                    manager=manager)
+    mass_label = pygame_gui.elements.UILabel(
+        relative_rect=pygame.Rect((-60, current_y), (200, 30)),
+        text="Mass:",
+        manager=manager
+    )
+    current_y += 30
+
+    mass_entry = pygame_gui.elements.UITextEntryLine(
+        relative_rect=pygame.Rect((10, current_y), (100, 30)),
+        manager=manager
+    )
     mass_entry.set_text(str(mass))
+    current_y += 40
+    
+    speed_range_label = pygame_gui.elements.UILabel(
+        relative_rect=pygame.Rect((5, current_y), (200, 30)),
+        text="Speed Range (min/max):",
+        manager=manager
+    )
+    current_y += 30
 
-    speed_range_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect((10, 100), (150, 20)),
-                                                 text="Speed Range (min,max):", manager=manager)
-    speed_range_min_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((170, 100), (50, 20)),
-                                                                manager=manager)
+    speed_range_min_entry = pygame_gui.elements.UITextEntryLine(
+        relative_rect=pygame.Rect((UI_MARGIN, current_y), (60, 30)),
+        manager=manager
+    )
     speed_range_min_entry.set_text(str(speed_range[0]))
-    speed_range_max_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((230, 100), (50, 20)),
-                                                                manager=manager)
+
+    speed_range_max_entry = pygame_gui.elements.UITextEntryLine(
+        relative_rect=pygame.Rect((UI_MARGIN + 70, current_y), (60, 30)),
+        manager=manager
+    )
     speed_range_max_entry.set_text(str(speed_range[1]))
+    current_y += 40
 
-    aspect_ratio_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect((10, 130), (150, 20)),
-                                                 text="Aspect Ratio:", manager=manager)
-    aspect_ratio_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((170, 130), (50, 20)),
-                                                              manager=manager)
+    aspect_ratio_label = pygame_gui.elements.UILabel(
+        relative_rect=pygame.Rect((-22, current_y), (200, 30)),
+        text="Aspect Ratio (w/h):",
+        manager=manager
+    )
+    current_y += 30
+
+    aspect_ratio_entry = pygame_gui.elements.UITextEntryLine(
+        relative_rect=pygame.Rect((10, current_y), (100, 30)),
+        manager=manager
+    )
     aspect_ratio_entry.set_text(str(aspect_ratio))
+    current_y += 40
 
-    update_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((10, 160), (150, 30)),
-                                                 text="Update Parameters", manager=manager)
+    update_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((10, current_y), (200, 35)),
+        text="Update Simulation",
+        manager=manager
+    )
+    current_y += 50
 
-    collision_count_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect((10, 200), (200, 20)),
-                                                        text="Particle Collisions: 0", manager=manager)
-    wall_collision_count_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect((10, 230), (200, 20)),
-                                                             text="Wall Collisions: 0", manager=manager)
+    collision_count_label = pygame_gui.elements.UILabel(
+        relative_rect=pygame.Rect((10, current_y), (200, 25)),
+        text="Particle Collisions: 0",
+        manager=manager
+    )
+    current_y += 30
 
-    particles = create_particles(num_particles, radius, mass, speed_range, width, height)
+    wall_collision_count_label = pygame_gui.elements.UILabel(
+        relative_rect=pygame.Rect((10, current_y), (200, 25)),
+        text="Wall Collisions: 0",
+        manager=manager
+    )
+
+    particles = create_particles(num_particles, radius, mass, speed_range, sim_width, sim_height)
     particle_collisions = 0
     wall_collisions = 0
     collisions_by_particle = np.zeros(num_particles)
@@ -204,6 +279,7 @@ def main(no_gui=False):
     running = True
 
     while running:
+        
         counter_heating += 1
         time_delta = clock.tick(60) / 1000.0
         screen.fill((0, 0, 0))
@@ -223,23 +299,35 @@ def main(no_gui=False):
                             speed_range = [float(speed_range_min_entry.get_text()), float(speed_range_max_entry.get_text())]
                             aspect_ratio = float(aspect_ratio_entry.get_text())
 
-                            width = 800  
-                            height = int(width / aspect_ratio)
-                            screen = pygame.display.set_mode((width, height))
+                            sim_height = BASE_SIM_HEIGHT
+                            sim_width = int(sim_height * aspect_ratio)
+                            window_width = PANEL_WIDTH + sim_width
+                            window_height = sim_height
+                            
+                            screen = pygame.display.set_mode(
+                                (window_width, window_height), 
+                                pygame.RESIZABLE
+                            )
 
-                            particles = create_particles(num_particles, radius, mass, speed_range, width, height)
+                            # Пересоздание частиц
+                            particles = create_particles(
+                                num_particles, radius, mass, 
+                                speed_range, sim_width, sim_height
+                            )
+                            
+                            # Сбрасываем счетчики
                             particle_collisions = 0
                             wall_collisions = 0
                             collisions_by_particle = np.zeros(num_particles)
                             collided_number = np.zeros(num_particles)
-                        except ValueError:
-                            print("Invalid input. Please enter numbers.")
+
+                        except ValueError as e:
+                            print(f"Ошибка ввода: {e}. Введите корректные числа.")
 
             manager.process_events(event)
 
-        # Update and draw particles
         for i, p1 in enumerate(particles):
-            p1.update(time_delta, width, height)
+            p1.update(time_delta, sim_width, sim_height)
             p1.draw(screen)
 
         for i in range(len(particles)):
@@ -250,8 +338,8 @@ def main(no_gui=False):
                     collisions_by_particle[j] += 1
 
         for p in particles:
-            if (p.x - p.radius < 1 or p.x + p.radius > width - 1 or
-                p.y - p.radius < 1 or p.y + p.radius > height - 1):
+            if (p.x - p.radius < 1 or p.x + p.radius > window_width - 1 or
+                p.y - p.radius < 1 or p.y + p.radius > window_height - 1):
                 wall_collisions += 1
                 collisions_by_particle[p.id] = 0
 
