@@ -152,7 +152,6 @@ def main(no_gui=False):
 
     manager = pygame_gui.UIManager((width, height))
 
-    # UI elements
     num_particles_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect((10, 10), (150, 20)),
                                                     text="Number of Particles:", manager=manager)
     num_particles_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((170, 10), (50, 20)),
@@ -237,7 +236,6 @@ def main(no_gui=False):
 
             manager.process_events(event)
 
-        # Update and draw particles
         for i, p1 in enumerate(particles):
             p1.update(time_delta, width, height)
             p1.draw(screen)
@@ -259,14 +257,13 @@ def main(no_gui=False):
         wall_collision_count_label.set_text(f"Wall Collisions: {wall_collisions}")
 
         if counter_heating <= heating_iterations:
-            time_delta *= 5  # Увеличиваем шаг времени в 5 раз, чтобы быстрей пройти прогрев
-
+            time_delta *= 5  
+            
         if counter_heating > heating_iterations:
             collided_number[np.count_nonzero(collisions_by_particle)] += 1
-    # Выводим данные только после прогрева
             print(collided_number, counter_heating, sep=",")
         else:
-            pass  # Пропускаем вывод во время прогрева
+            pass 
 
         manager.update(time_delta)
         manager.draw_ui(screen)
